@@ -1,0 +1,5 @@
+Pillow
+numpy
+requests==2.31.0
+reportlab==4.0.4
+python-docx==0.8.11

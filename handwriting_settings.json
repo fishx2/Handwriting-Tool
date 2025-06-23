@@ -1,0 +1,12 @@
+{
+  "font_size": 28,
+  "line_spacing": 1.5,
+  "margin": 50,
+  "ink_color": [
+    25,
+    25,
+    112
+  ],
+  "paper_style": "lined",
+  "selected_font": "fonts\\Caveat-Regular.ttf"
+}

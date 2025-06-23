@@ -1,0 +1,2 @@
+Vui lòng sao chép các file font chữ .ttf hoặc .otf của bạn vào thư mục này cho ngôn ngữ malayalam.
+Chỉ những font hỗ trợ đầy đủ ký tự của ngôn ngữ này mới được tải.
