@@ -1,230 +1,233 @@
-# 🖋️ Handwriting Generator GUI - Hướng dẫn cài đặt & Tính năng mới
+# 🖋️ Handwriting Tool - Công cụ chuyển đổi văn bản thành chữ viết tay
 
-## 📦 Dependencies cần thiết
+[![Python](https://img.shields.io/badge/Python-3.7+-blue.svg)](https://www.python.org/downloads/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/Version-2.0-orange.svg)]()
 
-Tạo file `requirements.txt`:
+> **Công cụ AI chuyển đổi văn bản thành chữ viết tay tự nhiên với nhiều font đa ngôn ngữ**
 
-```txt
-Pillow==10.0.1
-numpy==1.24.3
-requests==2.31.0
-reportlab==4.0.4
-python-docx==0.8.11
-```
+## ✨ **Tính năng nổi bật**
 
-## 🚀 Cài đặt
+### 🎨 **Hiệu ứng chữ viết tay tự nhiên**
+- **Rung tay tự nhiên**: Mô phỏng chuyển động tay khi viết
+- **Biến thể kích thước**: Font size thay đổi ngẫu nhiên ±3px
+- **Hiệu ứng mực**: Đậm nhạt và nét bút đứt đoạn
+- **Nghiêng dòng**: Góc nghiêng tự nhiên ±3 độ
+- **Khoảng cách ngẫu nhiên**: Giữa các ký tự và từ
 
-### Bước 1: Cài đặt Python packages
+### 🌍 **Hỗ trợ đa ngôn ngữ**
+- **Tiếng Việt**: 5 font thư pháp đẹp
+- **Tiếng Anh**: 4 font handwriting
+- **Tiếng Nhật**: 2 font Kanji
+- **Tiếng Trung**: Font Source Han Sans
+- **Tiếng Nga**: Font Balmoral
+- **Tiếng Ả Rập**: Font Saudi Arabia
+- **Và 30+ ngôn ngữ khác** với font dự phòng
+
+### 📄 **Kiểu giấy đa dạng**
+- **Kẻ ngang**: Giấy vở học sinh
+- **4 ô ly**: Giấy vở Việt Nam
+- **Ô vuông**: Giấy caro
+- **Chấm bi**: Giấy kẻ chấm
+- **Trắng**: Giấy trắng
+- **Giấy thi**: Giấy thi chuyên nghiệp
+- **Thư pháp**: Giấy thư pháp
+- **Parchment**: Giấy cổ
+
+### 🎛️ **Tùy chỉnh nâng cao**
+- **Kích thước chữ**: 16-48px
+- **Khoảng cách dòng**: 1.0-3.0
+- **Lề giấy**: 20-100px
+- **Màu mực**: Tùy chọn màu sắc
+- **Kích thước giấy**: A4, A5, Custom
+- **Xuất đen trắng**: Giống scan
+
+### 💾 **Hệ thống Template**
+- **Lưu cài đặt**: Lưu các preset yêu thích
+- **Tải template**: Tái sử dụng cài đặt
+- **Quản lý**: Xóa, đổi tên template
+- **Tự động**: Lưu ngày tạo
+
+### 🌙 **Dark Mode**
+- **Giao diện tối**: Bảo vệ mắt
+- **Chuyển đổi mượt**: Light/Dark toggle
+- **Tùy chỉnh**: Màu sắc tự động
+
+### 📤 **Xuất file đa định dạng**
+- **PNG**: Chất lượng cao
+- **PDF**: Vector, có thể in
+- **Word**: Chỉnh sửa được
+- **SVG**: Vector chất lượng cao
+
+## 🚀 **Cài đặt và sử dụng**
+
+### **Yêu cầu hệ thống**
+- Python 3.7+
+- Windows 10/11 (đã test)
+- RAM: 2GB+
+- Dung lượng: 50MB
+
+### **Cài đặt nhanh**
 ```bash
+# Clone repository
+git clone https://github.com/fishx2/Handwriting-Tool.git
+cd Handwriting-Tool
+
+# Cài đặt dependencies
 pip install -r requirements.txt
-```
 
-### Bước 2: Cấu trúc thư mục
-```
-Handwriting Tool/
-├── handwriting_gui.py          # File GUI chính
-├── requirements.txt            # Dependencies
-├── fonts/                      # Thư mục fonts (tổ chức theo ngôn ngữ)
-│   ├── english/                # Font tiếng Anh
-│   ├── vietnamese/             # Font tiếng Việt
-│   ├── japanese/               # Font tiếng Nhật
-│   └── ...                     # Các ngôn ngữ khác
-├── output/                     # Thư mục output (tùy chọn)
-└── handwriting_settings.json   # File cài đặt (tự động tạo)
-```
-
-### Bước 3: Thêm font mới
-- Mỗi ngôn ngữ có thư mục riêng trong `fonts/`.
-- Để thêm font, chỉ cần copy file `.ttf` hoặc `.otf` vào đúng thư mục ngôn ngữ.
-- Ứng dụng sẽ tự động nhận diện và hiển thị tất cả font, kèm nhãn ngôn ngữ song ngữ (ví dụ: `[Vietnamese/Tiếng Việt] MJ-VIP-Daytonica-lytrx5.ttf`).
-- Có thể kéo-thả file font trực tiếp vào cửa sổ ứng dụng.
-
-### Bước 4: Chạy ứng dụng
-```bash
+# Chạy ứng dụng
 python handwriting_gui.py
 ```
 
-## ✨ Tính năng chính
-
-### 🌍 Quản lý font đa ngôn ngữ & giao diện chọn font mới
-- **Tự động quét và hiển thị tất cả font của mọi ngôn ngữ**
-- **Nhãn song ngữ cho từng font**: Dễ dàng nhận biết, phù hợp cả người Việt và quốc tế
-- **Preview trực tiếp**: Nhập text demo để xem trước font
-- **Hướng dẫn thêm font rõ ràng**: Nếu chưa có font, app sẽ hướng dẫn cách thêm
-- **Chọn font không cần chọn ngôn ngữ**: Tất cả font đều hiển thị, dễ tìm kiếm
-
-### 🎨 Giao diện thân thiện
-- **Text Area không giới hạn**: Nhập văn bản dài tùy ý
-- **Live Preview**: Xem trước kết quả ngay lập tức
-- **Settings Panel**: Tùy chỉnh đầy đủ các thông số
-
-### ⚙️ Tùy chỉnh nâng cao
-- **Font Size**: 16-48px với slider
-- **Line Spacing**: 1.0-3.0x với điều chỉnh mịn
-- **Margin**: 20-100px
-- **Ink Color**: Color picker đầy đủ
-- **Paper Style**: Lined/Blank/Grid
-
-### 📤 Xuất đa định dạng
-- **PNG**: Hình ảnh chất lượng cao
-- **PDF**: Tự động scale fit A4, professional layout
-- **Word**: Tương thích Microsoft Word (.docx)
-
-### 💾 Quản lý cài đặt
-- **Auto Save**: Lưu cài đặt tự động
-- **Load Settings**: Khôi phục cài đặt trước đó
-- **Import Text**: Mở file .txt trực tiếp
-
-## 🎯 Cách sử dụng
-
-### 1. Nhập văn bản & chọn font
-- Nhập văn bản vào text area
-- Chọn font từ combobox, mỗi font đều có nhãn ngôn ngữ song ngữ
-- Có thể nhập text demo để xem preview trực tiếp
-- Nếu muốn thêm font, chỉ cần copy/kéo-thả vào đúng thư mục ngôn ngữ
-
-### 2. Tùy chỉnh
-- Điều chỉnh các slider cho font size, spacing, margin
-- Chọn màu mực với color picker
-- Chọn kiểu giấy phù hợp
-
-### 3. Tạo và xuất
-- Click "🎨 Tạo chữ viết tay" 
-- Xem preview bên phải
-- Chọn định dạng xuất: PNG/PDF/Word
-
-## 🔧 Tính năng kỹ thuật
-
-### Unicode & Font Fallback thông minh
-- **Tự động kiểm tra font**: Nếu font không hỗ trợ ký tự, sẽ tự động bỏ qua hoặc cảnh báo
-- **Hỗ trợ nhiều hệ chữ**: Latin, Việt, Trung, Nhật, Ấn Độ, Ả Rập, ...
-
-### Natural Handwriting Simulation
-- **Character Variations**: Mỗi ký tự có vị trí và góc xoay ngẫu nhiên
-- **Word Spacing**: Khoảng cách từ tự nhiên
-- **Line Slant**: Độ nghiêng dòng realistic
-- **Ink Effects**: Hiệu ứng mực thấm và texture
-
-### Smart Text Processing
-- **Auto Line Breaking**: Tự động xuống dòng thông minh
-- **Paragraph Handling**: Xử lý đoạn văn đúng cách
-- **Unicode Support**: Hỗ trợ đầy đủ ký tự tiếng Việt
-
-### Performance Optimization
-- **Threading**: Xử lý không block UI
-- **Memory Management**: Tối ưu memory cho text dài
-- **Font Caching**: Cache fonts để tăng tốc
-
-## 📋 Troubleshooting
-
-### Lỗi thường gặp
-
-**1. Lỗi import modules:**
+### **Hoặc chạy file .bat**
 ```bash
-pip install --upgrade pip
-pip install -r requirements.txt
+# Chạy trực tiếp
+run.bat
 ```
 
-**2. Lỗi font không load:**
-- Kiểm tra kết nối internet
-- Fonts sẽ tự động download lần đầu
+## 📖 **Hướng dẫn sử dụng**
 
-**3. Lỗi xuất PDF:**
-```bash
-pip install --upgrade reportlab
-```
+### **Bước 1: Nhập văn bản**
+- Nhập văn bản vào ô "Văn bản đầu vào"
+- Hỗ trợ copy/paste từ file
+- Đếm ký tự tự động
 
-**4. Lỗi xuất Word:**
-```bash
-pip install --upgrade python-docx
-```
+### **Bước 2: Tùy chỉnh**
+- **Chọn font**: Font phù hợp với ngôn ngữ
+- **Kích thước**: Điều chỉnh size chữ
+- **Màu mực**: Chọn màu yêu thích
+- **Kiểu giấy**: Chọn loại giấy phù hợp
 
-### Performance Tips
+### **Bước 3: Tạo chữ viết tay**
+- Nhấn "Tạo chữ viết tay"
+- Xem preview real-time
+- Zoom in/out để kiểm tra
 
-**Cho văn bản dài (>5000 ký tự):**
-- Giảm font size xuống 20-24px
-- Tăng margin để giảm canvas size
-- Chia nhỏ thành nhiều phần
+### **Bước 4: Xuất file**
+- **PNG**: Chất lượng cao, phù hợp web
+- **PDF**: Vector, in ấn chuyên nghiệp
+- **Word**: Chỉnh sửa thêm nội dung
+- **SVG**: Vector, scale không giới hạn
 
-**Cho chất lượng cao:**
-- Dùng font size 32-40px
-- Paper style "blank" để tối ưu
-- Xuất PNG rồi convert sang định dạng khác
+## 🎯 **Tính năng nâng cao**
 
-### Lỗi font không hiển thị đúng ký tự:
-- Đảm bảo font bạn thêm vào hỗ trợ đủ ký tự cho ngôn ngữ mong muốn
-- Ưu tiên dùng font Unicode đầy đủ (ví dụ: Source Han Sans, Noto, v.v.)
-- Nếu font bị lỗi, app sẽ cảnh báo và hướng dẫn cách sửa
-
-## 🎨 Customization
-
-### Thêm fonts mới cho từng ngôn ngữ
-- Copy file font vào đúng thư mục con trong `fonts/` (ví dụ: `fonts/vietnamese/`)
-- App sẽ tự động nhận diện và hiển thị
-
-### Thay đổi màu giấy mặc định
+### **Template System**
 ```python
-# Trong create_paper_texture()
-paper = Image.new('RGB', (width, height), color=(255, 255, 255))  # Trắng tinh
+# Lưu template
+1. Tùy chỉnh cài đặt
+2. Nhấn "Lưu Template"
+3. Đặt tên và mô tả
+4. Template được lưu tự động
+
+# Tải template
+1. Chọn template từ danh sách
+2. Nhấn "Tải Template"
+3. Cài đặt được áp dụng ngay
 ```
 
-### Tùy chỉnh ink effects
+### **Dark Mode**
 ```python
-# Trong add_ink_effects()
-noise = np.random.normal(0, 8, img_array.shape)  # Tăng noise
-result = result.filter(ImageFilter.GaussianBlur(radius=0.5))  # Tăng blur
+# Bật/tắt Dark Mode
+1. Tích vào "🌙 Dark Mode"
+2. Giao diện chuyển đổi tự động
+3. Bảo vệ mắt khi làm việc lâu
 ```
 
-## 📸 Screenshots
+### **Keyboard Shortcuts**
+- **Preview**: Mũi tên để di chuyển
+- **Home/End**: Về đầu/cuối
+- **Mouse**: Kéo để pan
+- **Wheel**: Zoom in/out
+
+## 📁 **Cấu trúc dự án**
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│ 🖋️ Handwriting Generator                                    │
-├─────────────┬─────────────────────────┬─────────────────────┤
-│ ⚙️ Cài đặt   │ ✍️ Văn bản đầu vào        │ 👁️ Xem trước        │
-│             │                         │                     │
-│ Font: 28    │ Nhập text của bạn...    │ [Preview Image]     │
-│ Spacing:1.5 │                         │                     │
-│ Margin: 50  │                         │                     │
-│ Color: 🔵   │                         │                     │
-│ Paper:Lined │                         │                     │
-│             │                         │                     │
-│ 🎨 Tạo      │                         │                     │
-│ 💾 Lưu      │                         │                     │
-│ 📁 Mở       │                         │                     │
-│             │                         │                     │
-│ 📤 Xuất:    │                         │                     │
-│ 💾 PNG      │                         │                     │
-│ 📄 PDF      │                         │                     │
-│ 📝 Word     │                         │                     │
-└─────────────┴─────────────────────────┴─────────────────────┘
+Handwriting-Tool/
+├── fonts/                 # Thư mục font đa ngôn ngữ
+│   ├── vietnamese/       # Font tiếng Việt
+│   ├── english/          # Font tiếng Anh
+│   ├── japanese/         # Font tiếng Nhật
+│   └── ...               # 30+ ngôn ngữ khác
+├── output/               # Thư mục xuất file
+├── handwriting_gui.py    # File chính
+├── requirements.txt      # Dependencies
+├── run.bat              # Script chạy nhanh
+├── README.md            # Hướng dẫn này
+└── templates.json       # File lưu template
 ```
 
-## 🌟 Advanced Features
+## 🔧 **Tùy chỉnh nâng cao**
 
-### Batch Processing
+### **Thêm font mới**
+1. Copy file font (.ttf/.otf) vào thư mục `fonts/[ngôn_ngữ]/`
+2. Khởi động lại ứng dụng
+3. Font sẽ xuất hiện trong danh sách
+
+### **Tùy chỉnh màu sắc**
 ```python
-# Trong tương lai có thể thêm:
-def batch_process_files(self, file_list):
-    for file_path in file_list:
-        # Process each file
-        pass
+# Trong file handwriting_gui.py
+self.ink_color = (25, 25, 112)  # Màu mặc định
+# Thay đổi RGB values để tùy chỉnh
 ```
 
-### Template System
+### **Thêm kiểu giấy mới**
 ```python
-# Templates cho các loại giấy
-templates = {
-    'homework': {'margin': 80, 'line_spacing': 2.0},
-    'letter': {'margin': 60, 'line_spacing': 1.8},
-    'note': {'margin': 40, 'line_spacing': 1.5}
-}
+# Thêm vào hàm create_paper_texture()
+elif paper_style == "your_style":
+    # Code tạo texture mới
 ```
 
-## 📞 Support
+## 🐛 **Xử lý lỗi thường gặp**
 
-Nếu gặp vấn đề:
-1. Kiểm tra Python version >= 3.8
-2. Cài đặt lại dependencies
-3. Kiểm tra quyền ghi file trong thư mục
-4. Đảm bảo có kết nối internet cho lần đầu chạy
+### **Lỗi font không hiển thị**
+- Kiểm tra file font có đúng định dạng (.ttf/.otf)
+- Đảm bảo font hỗ trợ ký tự cần thiết
+- Thử font khác trong cùng ngôn ngữ
+
+### **Lỗi xuất file**
+- Kiểm tra quyền ghi thư mục output
+- Đảm bảo đủ dung lượng ổ cứng
+- Thử xuất định dạng khác
+
+### **Lỗi giao diện**
+- Cập nhật Python lên phiên bản mới
+- Cài đặt lại tkinter: `pip install tk`
+- Kiểm tra độ phân giải màn hình
+
+## 🤝 **Đóng góp**
+
+Chúng tôi rất hoan nghênh mọi đóng góp! Hãy:
+
+1. **Fork** repository
+2. Tạo **branch** mới (`git checkout -b feature/AmazingFeature`)
+3. **Commit** thay đổi (`git commit -m 'Add some AmazingFeature'`)
+4. **Push** lên branch (`git push origin feature/AmazingFeature`)
+5. Tạo **Pull Request**
+
+### **Cách đóng góp**
+- 🐛 **Báo lỗi**: Tạo Issue với mô tả chi tiết
+- 💡 **Đề xuất tính năng**: Thảo luận trong Discussions
+- 📝 **Cải thiện docs**: Chỉnh sửa README
+- 🔧 **Sửa code**: Pull Request
+
+## 📄 **License**
+
+Dự án này được phân phối dưới giấy phép MIT. Xem file `LICENSE` để biết thêm chi tiết.
+
+## 🙏 **Lời cảm ơn**
+
+- **Font creators**: Cảm ơn các tác giả font đã chia sẻ
+- **Python community**: Tkinter, PIL, reportlab
+- **Contributors**: Tất cả người đóng góp
+- **Users**: Cảm ơn mọi người đã sử dụng và phản hồi
+
+## 📞 **Liên hệ**
+
+- **GitHub**: [@fishx2](https://github.com/fishx2)
+- **Email**: [your-email@example.com]
+- **Issues**: [GitHub Issues](https://github.com/fishx2/Handwriting-Tool/issues)
+
+---
+
+⭐ **Nếu dự án này hữu ích, hãy cho chúng tôi một star!** ⭐

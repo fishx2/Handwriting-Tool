@@ -10,6 +10,7 @@ from reportlab.lib.utils import ImageReader
 from docx import Document
 from docx.shared import Inches
 import json
+import datetime
 
 # Thêm import cho kéo-thả
 try:
@@ -220,49 +221,52 @@ class HandwritingGenerator:
             return False
 
     def add_natural_variations(self, draw, text, x, y, font, ink_color):
-        """Thêm các biến thể tự nhiên cho chữ viết tay, có font dự phòng cho ký tự đặc biệt."""
-        char_x = x
+        """Thêm các biến thể tự nhiên cho chữ viết tay (cải tiến chuyên nghiệp)"""
+        if not text.strip():
+            return
         
-        fallback_font_instance = None
-        if self.fallback_font_path:
-            try:
-                # Đảm bảo font dự phòng có cùng kích thước
-                fallback_font_instance = ImageFont.truetype(self.fallback_font_path, font.size)
-            except (IOError, AttributeError):
-                fallback_font_instance = None
-
+        # Tạo hiệu ứng rung tay tự nhiên (tăng độ ngẫu nhiên)
+        hand_tremor = random.randint(0, 4)  # Độ rung tay (0-4 pixel)
+        
+        # Thêm biến thể cho từng ký tự
+        current_x = x
         for char in text:
-            if char == ' ' or not char.isprintable():
-                char_x += random.randint(15, 25) if char == ' ' else (font.size // 2 if hasattr(font, 'size') else 10)
-                continue
+            # Biến thể vị trí cho từng ký tự (tăng độ ngẫu nhiên)
+            char_x = current_x + random.randint(-hand_tremor, hand_tremor)
+            char_y = y + random.randint(-hand_tremor, hand_tremor)
             
-            active_font = font
-            is_fallback = False
-            # Nếu font chính không có ký tự, thử dùng font dự phòng
-            if not self.has_glyph(font, char):
-                if fallback_font_instance and self.has_glyph(fallback_font_instance, char):
-                    active_font = fallback_font_instance
-                    is_fallback = True
-                else:
-                    # Nếu cả hai đều không có, bỏ qua và chừa một khoảng trống
-                    char_x += (font.size // 2 if hasattr(font, 'size') else 10)
-                    continue
-
-            # Không áp dụng hiệu ứng viết tay cho ký tự từ font dự phòng
-            offset_x = 0 if is_fallback else random.randint(-2, 2)
-            offset_y = 0 if is_fallback else random.randint(-3, 3)
-            char_pos = (char_x + offset_x, y + offset_y)
+            # Biến thể kích thước font nhẹ (tăng độ ngẫu nhiên)
+            size_variation = random.randint(-3, 3)
+            char_font_size = font.size + size_variation
+            if char_font_size < 8:  # Đảm bảo font size tối thiểu
+                char_font_size = 8
             
             try:
-                draw.text(char_pos, char, font=active_font, fill=ink_color)
-                char_width = active_font.getlength(char)
-                char_x += char_width
-                # Thêm khoảng cách ngẫu nhiên nếu không phải là font dự phòng
-                if not is_fallback:
-                     char_x += random.randint(-1, 2)
-            except Exception as e:
-                print(f"Lỗi không thể vẽ ký tự '{char}': {e}")
-                char_x += (font.size // 2 if hasattr(font, 'size') else 10)
+                # Tạo font với kích thước biến thể
+                char_font = ImageFont.truetype(font.path, char_font_size, encoding='unic')
+            except:
+                # Fallback nếu không tạo được font mới
+                char_font = font
+            
+            # Biến thể màu mực (đậm nhạt) - tăng độ ngẫu nhiên
+            ink_variation = random.randint(-30, 30)
+            char_ink_color = tuple(max(0, min(255, c + ink_variation)) for c in ink_color)
+            
+            # Hiệu ứng nét bút đứt đoạn (10% khả năng)
+            if random.random() < 0.1:
+                # Làm mờ màu để tạo hiệu ứng hết mực
+                char_ink_color = tuple(max(0, min(255, c - 50)) for c in char_ink_color)
+            
+            # Vẽ ký tự với biến thể
+            draw.text((char_x, char_y), char, font=char_font, fill=char_ink_color)
+            
+            # Tính toán khoảng cách đến ký tự tiếp theo (tăng độ ngẫu nhiên)
+            bbox = draw.textbbox((0, 0), char, font=char_font)
+            char_width = bbox[2] - bbox[0]
+            
+            # Thêm khoảng cách tự nhiên giữa các ký tự (tăng độ ngẫu nhiên)
+            spacing_variation = random.randint(-3, 4)
+            current_x += char_width + spacing_variation
 
     def add_ink_effects(self, image):
         """Thêm hiệu ứng mực và texture"""
@@ -312,17 +316,38 @@ class HandwritingGenerator:
         return result
     
     def create_olined_texture(self, width, height, margin, line_height):
-        """Tạo giấy ô ly (4 dòng nhỏ, 1 dòng đậm)"""
+        """Tạo giấy 4 ô ly Việt Nam (4 dòng nhỏ, 1 dòng đậm)"""
         paper = Image.new('RGB', (width, height), color=(255, 255, 255))
         draw = ImageDraw.Draw(paper)
+        
         # Vẽ các dòng ngang
         for i in range(margin, height - margin, line_height // 4):
-            color = (200, 200, 255) if (i - margin) % line_height else (100, 100, 200)
-            width_line = 1 if (i - margin) % line_height else 2
+            # Dòng đậm (dòng chính) - màu xanh đậm
+            if (i - margin) % line_height == 0:
+                color = (100, 100, 200)
+                width_line = 2
+            # Dòng mỏng (dòng phụ) - màu xanh nhạt
+            else:
+                color = (180, 180, 255)
+                width_line = 1
+            
             draw.line([(margin, i), (width - margin, i)], fill=color, width=width_line)
-        # Vẽ dòng kẻ dọc
-        for x in range(margin + 60, width - margin, 80):
-            draw.line([(x, margin), (x, height - margin)], fill=(220, 220, 220), width=1)
+        
+        # Vẽ dòng kẻ dọc (ô ly)
+        # Khoảng cách giữa các cột ô ly
+        column_width = 80
+        for x in range(margin + 60, width - margin, column_width):
+            # Dòng dọc đậm hơn cho viền cột
+            if (x - margin - 60) % (column_width * 2) == 0:
+                draw.line([(x, margin), (x, height - margin)], fill=(150, 150, 200), width=2)
+            else:
+                draw.line([(x, margin), (x, height - margin)], fill=(200, 200, 220), width=1)
+        
+        # Vẽ lề đỏ bên trái (như giấy học sinh)
+        margin_line_x = margin + 50
+        draw.line([(margin_line_x, margin), (margin_line_x, height - margin)], 
+                 fill=(255, 100, 100), width=2)
+        
         return paper
 
     def create_exam_texture(self, width, height, margin, line_height):
@@ -362,7 +387,7 @@ class HandwritingGenerator:
     def generate_handwriting(self, text, output_path=None, 
                            font_size=28, line_spacing=1.5, margin=50,
                            ink_color=(25, 25, 112), paper_style="lined", selected_font=None, progress_callback=None,
-                           paper_size="A4", custom_width=800, custom_height=600):
+                           paper_size="A4", custom_width=800, custom_height=600, black_white=False):
         """Tạo chữ viết tay từ text"""
         import tkinter.messagebox as tkmsg
         if not self.fonts:
@@ -401,7 +426,18 @@ class HandwritingGenerator:
         if isinstance(text, bytes):
             text = text.decode('utf-8')
         
-        wrapper = textwrap.TextWrapper(width=70)
+        # Tính toán kích thước canvas trước
+        line_height = int(font_size * line_spacing)
+        canvas_width, canvas_height = self.get_canvas_size(paper_size, custom_width, custom_height, 1, line_height, margin)
+        
+        # Tính toán số ký tự tối đa trên mỗi dòng dựa trên kích thước giấy thực tế
+        available_width = canvas_width - margin * 2 - 60  # Trừ lề và khoảng cách bắt đầu
+        # Ước tính số ký tự dựa trên font size (trung bình 1 ký tự = font_size * 0.6)
+        estimated_char_width = font_size * 0.6
+        max_chars_per_line = int(available_width / estimated_char_width)
+        
+        # Sử dụng số ký tự đã tính toán thay vì cố định 70
+        wrapper = textwrap.TextWrapper(width=max_chars_per_line)
         lines = []
         for paragraph in text.split('\n'):
             if paragraph.strip():
@@ -409,7 +445,7 @@ class HandwritingGenerator:
             else:
                 lines.append('')
         
-        line_height = int(font_size * line_spacing)
+        # Tính lại chiều cao canvas dựa trên số dòng thực tế
         canvas_width, canvas_height = self.get_canvas_size(paper_size, custom_width, custom_height, len(lines), line_height, margin)
         
         # Tạo ảnh nền dựa trên kiểu giấy
@@ -458,22 +494,38 @@ class HandwritingGenerator:
         
         for idx, line in enumerate(lines):
             if line.strip():
-                x_position = margin + 60 + random.randint(-5, 15)
-                line_slant = random.randint(-2, 2)
+                # Tăng độ ngẫu nhiên cho vị trí bắt đầu dòng
+                x_position = margin + 60 + random.randint(-8, 20)
+                
+                # Tăng độ nghiêng dòng (slant) để tự nhiên hơn
+                line_slant = random.randint(-3, 3)
                 y_with_slant = y_position + line_slant
+                
+                # Thêm hiệu ứng lệch dòng ngẫu nhiên
+                line_wobble = random.randint(-2, 2)
+                y_with_slant += line_wobble
                 
                 words = line.split()
                 current_x = x_position
                 
                 for word_idx, word in enumerate(words):
                     if word_idx > 0:
-                        current_x += random.randint(8, 15)
+                        # Tăng khoảng cách giữa các từ
+                        current_x += random.randint(10, 20)
+                    
+                    # Kiểm tra xem từ có vượt quá biên phải không
+                    bbox = draw.textbbox((0, 0), word, font=font)
+                    word_width = bbox[2] - bbox[0]
+                    if current_x + word_width > canvas_width - margin:
+                        # Xuống dòng mới với vị trí ngẫu nhiên
+                        y_position += line_height
+                        current_x = margin + 60 + random.randint(-8, 20)
+                        line_slant = random.randint(-3, 3)
+                        y_with_slant = y_position + line_slant + random.randint(-2, 2)
                     
                     self.add_natural_variations(draw, word, current_x, 
                                               y_with_slant, font, ink_color)
                     
-                    bbox = draw.textbbox((0, 0), word, font=font)
-                    word_width = bbox[2] - bbox[0]
                     current_x += word_width
             
             y_position += line_height
@@ -481,6 +533,16 @@ class HandwritingGenerator:
                 progress_callback(idx + 1)
         
         image = self.add_ink_effects(image)
+        
+        # Chuyển đổi sang đen trắng nếu được yêu cầu
+        if black_white:
+            image = image.convert('L')  # Chuyển sang grayscale
+            # Tăng độ tương phản để giống scan
+            from PIL import ImageEnhance
+            enhancer = ImageEnhance.Contrast(image)
+            image = enhancer.enhance(1.5)  # Tăng độ tương phản 50%
+            # Chuyển về RGB để lưu PNG
+            image = image.convert('RGB')
         
         if output_path:
             image.save(output_path, 'PNG', quality=95)
@@ -513,6 +575,7 @@ class HandwritingGUI:
         self.setup_ui()
         self.load_settings_to_ui()
         self.setup_font_list()
+        self.refresh_template_list()  # Load danh sách template
 
     def setup_ui(self):
         """Thiết lập giao diện người dùng"""
@@ -532,9 +595,32 @@ class HandwritingGUI:
                                font=('Arial', 16, 'bold'))
         title_label.grid(row=0, column=0, columnspan=3, pady=(0, 10))
         
-        # Left panel - Settings
-        settings_frame = ttk.LabelFrame(main_frame, text="⚙️ Cài đặt", padding="10")
-        settings_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 10))
+        # Left panel - Settings (với scrollbar)
+        settings_container = ttk.Frame(main_frame)
+        settings_container.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 10))
+        settings_container.columnconfigure(0, weight=1)
+        settings_container.rowconfigure(0, weight=1)
+        
+        # Tạo canvas và scrollbar cho settings
+        settings_canvas = tk.Canvas(settings_container, width=350)
+        settings_scrollbar = ttk.Scrollbar(settings_container, orient="vertical", command=settings_canvas.yview)
+        settings_frame = ttk.LabelFrame(settings_canvas, text="⚙️ Cài đặt", padding="10")
+        
+        # Configure canvas
+        settings_canvas.configure(yscrollcommand=settings_scrollbar.set)
+        settings_canvas.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        settings_scrollbar.grid(row=0, column=1, sticky=(tk.N, tk.S))
+        
+        # Tạo window trong canvas cho settings_frame
+        settings_canvas.create_window((0, 0), window=settings_frame, anchor="nw")
+        
+        # Configure settings_frame để mở rộng theo nội dung
+        settings_frame.bind("<Configure>", lambda e: settings_canvas.configure(scrollregion=settings_canvas.bbox("all")))
+        
+        # Bind mouse wheel cho settings_canvas
+        def _on_mousewheel(event):
+            settings_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        settings_canvas.bind_all("<MouseWheel>", _on_mousewheel)
         
         # Font size
         ttk.Label(settings_frame, text=self.L['font_size']).grid(row=0, column=0, sticky=tk.W, pady=2)
@@ -599,19 +685,77 @@ class HandwritingGUI:
         ttk.Label(settings_frame, text=self.L['paper_style']).grid(row=7, column=0, sticky=tk.W, pady=2)
         self.paper_style_var = tk.StringVar(value="lined")
         paper_combo = ttk.Combobox(settings_frame, textvariable=self.paper_style_var,
-                                  values=["lined", "blank", "grid", "dotted", "parchment", "olined", "exam", "calligraphy"], state="readonly")
+                                  values=["lined", "blank", "grid", "dotted", "parchment", "olined", "exam", "calligraphy"], 
+                                  state="readonly")
         paper_combo.grid(row=7, column=1, sticky=(tk.W, tk.E), pady=2)
         
+        # Thêm tooltip cho các kiểu giấy
+        paper_style_tooltips = {
+            "lined": "Giấy kẻ ngang",
+            "blank": "Giấy trắng",
+            "grid": "Giấy ô vuông",
+            "dotted": "Giấy chấm bi",
+            "parchment": "Giấy giả cổ",
+            "olined": "Giấy 4 ô ly Việt Nam",
+            "exam": "Giấy kiểm tra",
+            "calligraphy": "Giấy thư pháp"
+        }
+        
+        def show_paper_tooltip(event):
+            selected = self.paper_style_var.get()
+            if selected in paper_style_tooltips:
+                tooltip_text = paper_style_tooltips[selected]
+                # Hiển thị tooltip trong status bar
+                self.status_bar.config(text=f"Kiểu giấy: {tooltip_text}")
+        
+        paper_combo.bind('<<ComboboxSelected>>', show_paper_tooltip)
+        
+        # Black & White option
+        self.black_white_var = tk.BooleanVar(value=False)
+        black_white_check = ttk.Checkbutton(settings_frame, text="Xuất đen trắng (như scan)", 
+                                           variable=self.black_white_var)
+        black_white_check.grid(row=7, column=2, sticky=tk.W, pady=2)
+        
+        # Template System
+        template_frame = ttk.LabelFrame(settings_frame, text="📋 Template", padding="5")
+        template_frame.grid(row=8, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=5)
+        
+        # Template name input
+        ttk.Label(template_frame, text="Tên template:").grid(row=0, column=0, sticky=tk.W, pady=2)
+        self.template_name_var = tk.StringVar()
+        template_name_entry = ttk.Entry(template_frame, textvariable=self.template_name_var, width=20)
+        template_name_entry.grid(row=0, column=1, sticky=(tk.W, tk.E), pady=2)
+        
+        # Template buttons
+        template_buttons_frame = ttk.Frame(template_frame)
+        template_buttons_frame.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=2)
+        
+        ttk.Button(template_buttons_frame, text="💾 Lưu template", 
+                  command=self.save_template).pack(side=tk.LEFT, padx=2)
+        ttk.Button(template_buttons_frame, text="📂 Tải template", 
+                  command=self.load_template).pack(side=tk.LEFT, padx=2)
+        ttk.Button(template_buttons_frame, text="🗑️ Xóa template", 
+                  command=self.delete_template).pack(side=tk.LEFT, padx=2)
+        
+        # Template list
+        ttk.Label(template_frame, text="Template đã lưu:").grid(row=2, column=0, sticky=tk.W, pady=(5,2))
+        self.template_listbox = tk.Listbox(template_frame, height=3)
+        self.template_listbox.grid(row=3, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=2)
+        self.template_listbox.bind('<Double-Button-1>', self.load_template_from_list)
+        
+        # Configure template frame column weights
+        template_frame.columnconfigure(1, weight=1)
+        
         # Paper size
-        ttk.Label(settings_frame, text=self.L['paper_size']).grid(row=8, column=0, sticky=tk.W, pady=2)
+        ttk.Label(settings_frame, text=self.L['paper_size']).grid(row=9, column=0, sticky=tk.W, pady=2)
         self.paper_size_var = tk.StringVar(value="A4")
         paper_size_combo = ttk.Combobox(settings_frame, textvariable=self.paper_size_var,
             values=["A4", "A5", "Custom"], state="readonly", width=10)
-        paper_size_combo.grid(row=8, column=1, sticky=(tk.W, tk.E), pady=2)
+        paper_size_combo.grid(row=9, column=1, sticky=(tk.W, tk.E), pady=2)
         self.custom_width_var = tk.IntVar(value=800)
         self.custom_height_var = tk.IntVar(value=600)
         self.custom_size_frame = ttk.Frame(settings_frame)
-        self.custom_size_frame.grid(row=8, column=2, sticky=(tk.W, tk.E), pady=2)
+        self.custom_size_frame.grid(row=9, column=2, sticky=(tk.W, tk.E), pady=2)
         ttk.Label(self.custom_size_frame, text="W:").pack(side=tk.LEFT)
         self.custom_width_entry = ttk.Entry(self.custom_size_frame, textvariable=self.custom_width_var, width=5)
         self.custom_width_entry.pack(side=tk.LEFT)
@@ -624,9 +768,18 @@ class HandwritingGUI:
         # Configure column weights for settings frame
         settings_frame.columnconfigure(1, weight=1)
         
+        # Dark Mode Toggle
+        dark_mode_frame = ttk.Frame(settings_frame)
+        dark_mode_frame.grid(row=10, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=5)
+        
+        self.dark_mode_var = tk.BooleanVar(value=False)
+        dark_mode_check = ttk.Checkbutton(dark_mode_frame, text="🌙 Dark Mode", 
+                                         variable=self.dark_mode_var, command=self.toggle_dark_mode)
+        dark_mode_check.pack(side=tk.LEFT, padx=5)
+        
         # Action buttons
         button_frame = ttk.Frame(settings_frame)
-        button_frame.grid(row=9, column=0, columnspan=3, pady=10, sticky=(tk.W, tk.E))
+        button_frame.grid(row=11, column=0, columnspan=3, pady=10, sticky=(tk.W, tk.E))
         
         ttk.Button(button_frame, text=self.L['create'], 
                   command=self.generate_handwriting).pack(fill=tk.X, pady=2)
@@ -637,7 +790,7 @@ class HandwritingGUI:
         
         # Export buttons
         export_frame = ttk.LabelFrame(settings_frame, text="📤 Xuất file", padding="5")
-        export_frame.grid(row=10, column=0, columnspan=3, pady=10, sticky=(tk.W, tk.E))
+        export_frame.grid(row=12, column=0, columnspan=3, pady=10, sticky=(tk.W, tk.E))
         
         ttk.Button(export_frame, text=self.L['export_png'], 
                   command=self.export_png).pack(fill=tk.X, pady=1)
@@ -645,17 +798,46 @@ class HandwritingGUI:
                   command=self.export_pdf).pack(fill=tk.X, pady=1)
         ttk.Button(export_frame, text=self.L['export_word'], 
                   command=self.export_word).pack(fill=tk.X, pady=1)
+        ttk.Button(export_frame, text="📐 SVG", 
+                  command=self.export_svg).pack(fill=tk.X, pady=1)
         
-        # Middle panel - Text input
+        # Middle panel - Text input (cải tiến với scrollbar ngang)
         text_frame = ttk.LabelFrame(main_frame, text=self.L['input_text'], padding="10")
         text_frame.grid(row=1, column=1, sticky=(tk.W, tk.E, tk.N, tk.S), padx=(0, 10))
         text_frame.columnconfigure(0, weight=1)
         text_frame.rowconfigure(0, weight=1)
         
-        # Text area with scrollbar
-        self.text_area = scrolledtext.ScrolledText(text_frame, wrap=tk.WORD, 
-                                                  font=('Arial', 11), height=15)
-        self.text_area.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        # Text area container với scrollbar ngang
+        text_container = ttk.Frame(text_frame)
+        text_container.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        text_container.columnconfigure(0, weight=1)
+        text_container.rowconfigure(0, weight=1)
+        
+        # Text area với cả scrollbar dọc và ngang
+        self.text_area = tk.Text(text_container, wrap=tk.NONE, font=('Arial', 11), height=15)
+        text_scrollbar_v = ttk.Scrollbar(text_container, orient="vertical", command=self.text_area.yview)
+        text_scrollbar_h = ttk.Scrollbar(text_container, orient="horizontal", command=self.text_area.xview)
+        
+        # Configure text area
+        self.text_area.configure(yscrollcommand=text_scrollbar_v.set, xscrollcommand=text_scrollbar_h.set)
+        
+        # Grid layout
+        self.text_area.grid(row=0, column=0, sticky="nsew")
+        text_scrollbar_v.grid(row=0, column=1, sticky="ns")
+        text_scrollbar_h.grid(row=1, column=0, sticky="ew")
+        
+        # Text wrap toggle
+        wrap_frame = ttk.Frame(text_frame)
+        wrap_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(5, 0))
+        
+        self.wrap_var = tk.BooleanVar(value=False)
+        wrap_check = ttk.Checkbutton(wrap_frame, text="Tự động xuống dòng", 
+                                   variable=self.wrap_var, command=self.toggle_text_wrap)
+        wrap_check.pack(side=tk.LEFT)
+        
+        # Character count
+        self.char_count_label = ttk.Label(text_frame, text=f"{self.L['char_count']} 0")
+        self.char_count_label.grid(row=2, column=0, sticky=tk.W, pady=(5, 0))
         
         # Sample text
         sample_text = """Xin chào! Đây là công cụ chuyển đổi văn bản thành chữ viết tay.
@@ -674,10 +856,6 @@ Các số: 0123456789
 Các ký tự đặc biệt: !@#$%^&*()_+-=[]{}|;':",./<>?`~"""
         
         self.text_area.insert('1.0', sample_text)
-        
-        # Character count
-        self.char_count_label = ttk.Label(text_frame, text=f"{self.L['char_count']} 0")
-        self.char_count_label.grid(row=1, column=0, sticky=tk.W, pady=(5, 0))
         self.text_area.bind('<KeyRelease>', self.update_char_count)
         self.update_char_count()
         
@@ -700,7 +878,7 @@ Các ký tự đặc biệt: !@#$%^&*()_+-=[]{}|;':",./<>?`~"""
         zoom_in_button = ttk.Button(zoom_controls_frame, text="➕", command=self.zoom_in, width=4)
         zoom_in_button.pack(side=tk.LEFT, padx=2)
         
-        # Preview canvas with scrollbar
+        # Preview canvas with scrollbar (cải tiến)
         canvas_frame = ttk.Frame(preview_frame)
         canvas_frame.grid(row=1, column=0, sticky=(tk.W, tk.E, tk.N, tk.S)) # Chuyển xuống dòng 1
         canvas_frame.columnconfigure(0, weight=1)
@@ -722,6 +900,15 @@ Các ký tự đặc biệt: !@#$%^&*()_+-=[]{}|;':",./<>?`~"""
         self.preview_canvas.bind("<B1-Motion>", self.on_canvas_drag)
         self.preview_canvas.bind("<Enter>", self.on_canvas_enter)
         self.preview_canvas.bind("<Leave>", self.on_canvas_leave)
+        
+        # Thêm keyboard shortcuts cho preview
+        self.preview_canvas.bind("<KeyPress-Left>", lambda e: self.preview_canvas.xview_scroll(-1, "units"))
+        self.preview_canvas.bind("<KeyPress-Right>", lambda e: self.preview_canvas.xview_scroll(1, "units"))
+        self.preview_canvas.bind("<KeyPress-Up>", lambda e: self.preview_canvas.yview_scroll(-1, "units"))
+        self.preview_canvas.bind("<KeyPress-Down>", lambda e: self.preview_canvas.yview_scroll(1, "units"))
+        self.preview_canvas.bind("<KeyPress-Home>", lambda e: self.preview_canvas.xview_moveto(0))
+        self.preview_canvas.bind("<KeyPress-End>", lambda e: self.preview_canvas.xview_moveto(1))
+        self.preview_canvas.focus_set()  # Cho phép nhận keyboard events
         
         # Status bar
         self.status_bar = ttk.Label(main_frame, text=self.L['ready'], relief=tk.SUNKEN)
@@ -748,7 +935,14 @@ Các ký tự đặc biệt: !@#$%^&*()_+-=[]{}|;':",./<>?`~"""
         text = self.text_area.get('1.0', tk.END)
         char_count = len(text) - 1  # Trừ ký tự newline cuối
         self.char_count_label.config(text=f"{self.L['char_count']} {char_count}")
-        
+    
+    def toggle_text_wrap(self):
+        """Chuyển đổi chế độ wrap cho text area"""
+        if self.wrap_var.get():
+            self.text_area.configure(wrap=tk.WORD)
+        else:
+            self.text_area.configure(wrap=tk.NONE)
+    
     def rgb_to_hex(self, rgb):
         """Chuyển RGB thành hex"""
         return f"#{rgb[0]:02x}{rgb[1]:02x}{rgb[2]:02x}"
@@ -821,7 +1015,8 @@ Các ký tự đặc biệt: !@#$%^&*()_+-=[]{}|;':",./<>?`~"""
                     progress_callback=self.update_progress,
                     paper_size=paper_size,
                     custom_width=custom_width,
-                    custom_height=custom_height
+                    custom_height=custom_height,
+                    black_white=self.black_white_var.get()
                 )
                 self.root.after(0, self.update_preview)
                 self.root.after(0, lambda: self.status_bar.config(text="Tạo thành công!"))
@@ -898,7 +1093,36 @@ Các ký tự đặc biệt: !@#$%^&*()_+-=[]{}|;':",./<>?`~"""
         )
         if file_path:
             try:
-                self.current_image.save(file_path, 'PNG', quality=95)
+                # Tạo lại ảnh với tùy chọn đen trắng nếu được chọn
+                if self.black_white_var.get():
+                    # Tạo lại ảnh với tùy chọn đen trắng
+                    text = self.text_area.get('1.0', tk.END).strip()
+                    selected_display_name = self.selected_font.get()
+                    font_path, font_lang = None, None
+                    if hasattr(self, 'font_lang_map') and selected_display_name in self.font_lang_map:
+                        font_path, font_lang = self.font_lang_map[selected_display_name]
+                    else:
+                        font_path = None
+                        font_lang = self.font_lang
+                    
+                    temp_gen = HandwritingGenerator(font_lang=font_lang)
+                    export_image = temp_gen.generate_handwriting(
+                        text=text,
+                        font_size=self.font_size_var.get(),
+                        line_spacing=self.line_spacing_var.get(),
+                        margin=self.margin_var.get(),
+                        ink_color=self.ink_color,
+                        paper_style=self.paper_style_var.get(),
+                        selected_font=font_path,
+                        paper_size=self.paper_size_var.get(),
+                        custom_width=self.custom_width_var.get(),
+                        custom_height=self.custom_height_var.get(),
+                        black_white=True
+                    )
+                    export_image.save(file_path, 'PNG', quality=95)
+                else:
+                    self.current_image.save(file_path, 'PNG', quality=95)
+                
                 messagebox.showinfo("Thành công", f"Đã lưu: {os.path.basename(file_path)}")
                 self.status_bar.config(text=f"Đã xuất PNG: {os.path.basename(file_path)}")
             except Exception as e:
@@ -917,9 +1141,38 @@ Các ký tự đặc biệt: !@#$%^&*()_+-=[]{}|;':",./<>?`~"""
         )
         if file_path:
             try:
+                # Tạo lại ảnh với tùy chọn đen trắng nếu được chọn
+                if self.black_white_var.get():
+                    # Tạo lại ảnh với tùy chọn đen trắng
+                    text = self.text_area.get('1.0', tk.END).strip()
+                    selected_display_name = self.selected_font.get()
+                    font_path, font_lang = None, None
+                    if hasattr(self, 'font_lang_map') and selected_display_name in self.font_lang_map:
+                        font_path, font_lang = self.font_lang_map[selected_display_name]
+                    else:
+                        font_path = None
+                        font_lang = self.font_lang
+                    
+                    temp_gen = HandwritingGenerator(font_lang=font_lang)
+                    export_image = temp_gen.generate_handwriting(
+                        text=text,
+                        font_size=self.font_size_var.get(),
+                        line_spacing=self.line_spacing_var.get(),
+                        margin=self.margin_var.get(),
+                        ink_color=self.ink_color,
+                        paper_style=self.paper_style_var.get(),
+                        selected_font=font_path,
+                        paper_size=self.paper_size_var.get(),
+                        custom_width=self.custom_width_var.get(),
+                        custom_height=self.custom_height_var.get(),
+                        black_white=True
+                    )
+                else:
+                    export_image = self.current_image
+                
                 # Chuyển PIL Image thành PDF
                 img_buffer = io.BytesIO()
-                self.current_image.save(img_buffer, format='PNG')
+                export_image.save(img_buffer, format='PNG')
                 img_buffer.seek(0)
                 
                 # Tạo PDF
@@ -927,7 +1180,7 @@ Các ký tự đặc biệt: !@#$%^&*()_+-=[]{}|;':",./<>?`~"""
                 
                 # Tính toán kích thước để fit A4
                 img_reader = ImageReader(img_buffer)
-                img_width, img_height = self.current_image.size
+                img_width, img_height = export_image.size
                 
                 # Scale để fit A4 với margin
                 page_width, page_height = A4
@@ -964,12 +1217,41 @@ Các ký tự đặc biệt: !@#$%^&*()_+-=[]{}|;':",./<>?`~"""
         )
         if file_path:
             try:
+                # Tạo lại ảnh với tùy chọn đen trắng nếu được chọn
+                if self.black_white_var.get():
+                    # Tạo lại ảnh với tùy chọn đen trắng
+                    text = self.text_area.get('1.0', tk.END).strip()
+                    selected_display_name = self.selected_font.get()
+                    font_path, font_lang = None, None
+                    if hasattr(self, 'font_lang_map') and selected_display_name in self.font_lang_map:
+                        font_path, font_lang = self.font_lang_map[selected_display_name]
+                    else:
+                        font_path = None
+                        font_lang = self.font_lang
+                    
+                    temp_gen = HandwritingGenerator(font_lang=font_lang)
+                    export_image = temp_gen.generate_handwriting(
+                        text=text,
+                        font_size=self.font_size_var.get(),
+                        line_spacing=self.line_spacing_var.get(),
+                        margin=self.margin_var.get(),
+                        ink_color=self.ink_color,
+                        paper_style=self.paper_style_var.get(),
+                        selected_font=font_path,
+                        paper_size=self.paper_size_var.get(),
+                        custom_width=self.custom_width_var.get(),
+                        custom_height=self.custom_height_var.get(),
+                        black_white=True
+                    )
+                else:
+                    export_image = self.current_image
+                
                 # Tạo document Word
                 doc = Document()
                 
                 # Lưu image tạm
                 temp_img_path = "temp_handwriting.png"
-                self.current_image.save(temp_img_path)
+                export_image.save(temp_img_path)
                 
                 # Thêm image vào Word
                 paragraph = doc.add_paragraph()
@@ -988,6 +1270,149 @@ Các ký tự đặc biệt: !@#$%^&*()_+-=[]{}|;':",./<>?`~"""
             except Exception as e:
                 messagebox.showerror("Lỗi", f"Không thể tạo Word: {e}")
                 
+    def export_svg(self):
+        """Xuất file SVG"""
+        text = self.text_area.get('1.0', tk.END).strip()
+        if not text:
+            messagebox.showwarning("Cảnh báo", "Vui lòng nhập văn bản!")
+            return
+            
+        file_path = filedialog.asksaveasfilename(
+            title="Lưu file SVG",
+            defaultextension=".svg",
+            filetypes=[("SVG files", "*.svg"), ("All files", "*.*")]
+        )
+        if file_path:
+            try:
+                # Lấy thông tin font
+                selected_display_name = self.selected_font.get()
+                font_path, font_lang = None, None
+                if hasattr(self, 'font_lang_map') and selected_display_name in self.font_lang_map:
+                    font_path, font_lang = self.font_lang_map[selected_display_name]
+                else:
+                    font_path = None
+                    font_lang = self.font_lang
+                
+                # Tạo SVG content
+                svg_content = self.generate_svg_content(
+                    text=text,
+                    font_size=self.font_size_var.get(),
+                    line_spacing=self.line_spacing_var.get(),
+                    margin=self.margin_var.get(),
+                    ink_color=self.ink_color,
+                    paper_style=self.paper_style_var.get(),
+                    selected_font=font_path,
+                    paper_size=self.paper_size_var.get(),
+                    custom_width=self.custom_width_var.get(),
+                    custom_height=self.custom_height_var.get(),
+                    black_white=self.black_white_var.get()
+                )
+                
+                # Lưu SVG vào file
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    f.write(svg_content)
+                
+                messagebox.showinfo("Thành công", f"Đã lưu: {os.path.basename(file_path)}")
+                self.status_bar.config(text=f"Đã xuất SVG: {os.path.basename(file_path)}")
+            except Exception as e:
+                messagebox.showerror("Lỗi", f"Không thể tạo SVG: {e}")
+    
+    def generate_svg_content(self, text, font_size, line_spacing, margin, ink_color, 
+                           paper_style, selected_font, paper_size, custom_width, 
+                           custom_height, black_white):
+        """Tạo nội dung SVG"""
+        # Tính toán kích thước canvas
+        line_height = int(font_size * line_spacing)
+        canvas_width, canvas_height = self.get_canvas_size(paper_size, custom_width, custom_height, 1, line_height, margin)
+        
+        # Tính toán số ký tự tối đa trên mỗi dòng
+        available_width = canvas_width - margin * 2 - 60
+        estimated_char_width = font_size * 0.6
+        max_chars_per_line = int(available_width / estimated_char_width)
+        
+        # Xử lý text
+        wrapper = textwrap.TextWrapper(width=max_chars_per_line)
+        lines = []
+        for paragraph in text.split('\n'):
+            if paragraph.strip():
+                lines.extend(wrapper.wrap(paragraph))
+            else:
+                lines.append('')
+        
+        # Tính lại chiều cao canvas
+        canvas_width, canvas_height = self.get_canvas_size(paper_size, custom_width, custom_height, len(lines), line_height, margin)
+        
+        # Tạo SVG header
+        svg_content = f'''<?xml version="1.0" encoding="UTF-8"?>
+<svg width="{canvas_width}" height="{canvas_height}" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .text {{ font-family: Arial, sans-serif; }}
+      .paper-bg {{ fill: white; }}
+    </style>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="{canvas_width}" height="{canvas_height}" class="paper-bg"/>
+'''
+        
+        # Thêm background pattern cho paper style
+        if paper_style == "lined":
+            # Vẽ dòng kẻ ngang
+            for i in range(margin + line_height, canvas_height - margin, line_height):
+                svg_content += f'  <line x1="{margin}" y1="{i}" x2="{canvas_width - margin}" y2="{i}" stroke="#c8c8ff" stroke-width="1"/>\n'
+            # Vẽ lề đỏ
+            svg_content += f'  <line x1="{margin + 50}" y1="{margin}" x2="{margin + 50}" y2="{canvas_height - margin}" stroke="#ff6464" stroke-width="2"/>\n'
+        elif paper_style == "olined":
+            # Vẽ giấy 4 ô ly
+            for i in range(margin, canvas_height - margin, line_height // 4):
+                color = "#6464c8" if (i - margin) % line_height == 0 else "#b4b4ff"
+                width = "2" if (i - margin) % line_height == 0 else "1"
+                svg_content += f'  <line x1="{margin}" y1="{i}" x2="{canvas_width - margin}" y2="{i}" stroke="{color}" stroke-width="{width}"/>\n'
+            # Vẽ dòng dọc
+            for x in range(margin + 60, canvas_width - margin, 80):
+                color = "#9696c8" if (x - margin - 60) % 160 == 0 else "#c8c8dc"
+                width = "2" if (x - margin - 60) % 160 == 0 else "1"
+                svg_content += f'  <line x1="{x}" y1="{margin}" x2="{x}" y2="{canvas_height - margin}" stroke="{color}" stroke-width="{width}"/>\n'
+            # Lề đỏ
+            svg_content += f'  <line x1="{margin + 50}" y1="{margin}" x2="{margin + 50}" y2="{canvas_height - margin}" stroke="#ff6464" stroke-width="2"/>\n'
+        
+        # Thêm text
+        y_position = margin + line_height
+        for line in lines:
+            if line.strip():
+                x_position = margin + 60
+                # Tạo text với biến thể nhẹ
+                for char in line:
+                    char_x = x_position + random.randint(-2, 2)
+                    char_y = y_position + random.randint(-2, 2)
+                    
+                    # Màu text
+                    if black_white:
+                        text_color = "#000000"
+                    else:
+                        ink_variation = random.randint(-20, 20)
+                        r = max(0, min(255, ink_color[0] + ink_variation))
+                        g = max(0, min(255, ink_color[1] + ink_variation))
+                        b = max(0, min(255, ink_color[2] + ink_variation))
+                        text_color = f"rgb({r},{g},{b})"
+                    
+                    # Kích thước font biến thể
+                    size_variation = random.randint(-2, 2)
+                    char_font_size = max(8, font_size + size_variation)
+                    
+                    svg_content += f'  <text x="{char_x}" y="{char_y}" font-size="{char_font_size}" fill="{text_color}" class="text">{char}</text>\n'
+                    
+                    # Tính khoảng cách đến ký tự tiếp theo
+                    char_width = char_font_size * 0.6
+                    spacing_variation = random.randint(-2, 3)
+                    x_position += char_width + spacing_variation
+            
+            y_position += line_height
+        
+        svg_content += '</svg>'
+        return svg_content
+    
     def save_settings(self):
         """Lưu cài đặt"""
         selected_display_name = self.selected_font.get()
@@ -1004,7 +1429,9 @@ Các ký tự đặc biệt: !@#$%^&*()_+-=[]{}|;':",./<>?`~"""
             'selected_font': font_path,
             'paper_size': self.paper_size_var.get(),
             'custom_width': self.custom_width_var.get(),
-            'custom_height': self.custom_height_var.get()
+            'custom_height': self.custom_height_var.get(),
+            'black_white': self.black_white_var.get(),
+            'dark_mode': self.dark_mode_var.get()
         }
         
         try:
@@ -1028,6 +1455,10 @@ Các ký tự đặc biệt: !@#$%^&*()_+-=[]{}|;':",./<>?`~"""
                     settings['custom_width'] = 800
                 if 'custom_height' not in settings:
                     settings['custom_height'] = 600
+                if 'black_white' not in settings:
+                    settings['black_white'] = False
+                if 'dark_mode' not in settings:
+                    settings['dark_mode'] = False
                 return settings
         except Exception as e:
             print(f"Lỗi tải cài đặt: {e}")
@@ -1041,7 +1472,9 @@ Các ký tự đặc biệt: !@#$%^&*()_+-=[]{}|;':",./<>?`~"""
             'selected_font': None,
             'paper_size': 'A4',
             'custom_width': 800,
-            'custom_height': 600
+            'custom_height': 600,
+            'black_white': False,
+            'dark_mode': False
         }
         
     def load_settings_to_ui(self):
@@ -1054,6 +1487,20 @@ Các ký tự đặc biệt: !@#$%^&*()_+-=[]{}|;':",./<>?`~"""
         self.paper_size_var.set(self.settings['paper_size'])
         self.custom_width_var.set(self.settings['custom_width'])
         self.custom_height_var.set(self.settings['custom_height'])
+        
+        # Áp dụng tùy chọn đen trắng
+        if 'black_white' in self.settings:
+            self.black_white_var.set(self.settings['black_white'])
+        else:
+            self.black_white_var.set(False)
+        
+        # Áp dụng tùy chọn dark mode
+        if 'dark_mode' in self.settings:
+            self.dark_mode_var.set(self.settings['dark_mode'])
+            if self.settings['dark_mode']:
+                self.toggle_dark_mode()  # Áp dụng dark mode nếu được lưu
+        else:
+            self.dark_mode_var.set(False)
         
         # Cập nhật màu button
         self.color_button.config(bg=self.rgb_to_hex(self.ink_color))
@@ -1204,13 +1651,259 @@ Các ký tự đặc biệt: !@#$%^&*()_+-=[]{}|;':",./<>?`~"""
             self.font_file_label.config(text="")
 
     def update_ui_language(self):
+        """Cập nhật ngôn ngữ UI"""
+        self.L = LANGS[self.lang]
         self.root.title(self.L['title'])
-        self.font_size_label.config(text=self.L['font_size'])
-        self.line_spacing_label.config(text=self.L['line_spacing'])
-        self.margin_label.config(text=self.L['margin'])
-        self.color_button.config(text=self.L['ink_color'])
-        self.status_bar.config(text=self.L['ready'])
-        # Bạn có thể mở rộng cho các label/nút khác tương tự
+        # Cập nhật các label khác nếu cần
+
+    # Template System Functions
+    def save_template(self):
+        """Lưu template hiện tại"""
+        template_name = self.template_name_var.get().strip()
+        if not template_name:
+            messagebox.showwarning("Cảnh báo", "Vui lòng nhập tên template!")
+            return
+        
+        # Lấy thông tin font hiện tại
+        selected_display_name = self.selected_font.get()
+        font_path, font_lang = None, None
+        if hasattr(self, 'font_lang_map') and selected_display_name in self.font_lang_map:
+            font_path, font_lang = self.font_lang_map[selected_display_name]
+        
+        template_data = {
+            'name': template_name,
+            'font_size': self.font_size_var.get(),
+            'line_spacing': self.line_spacing_var.get(),
+            'margin': self.margin_var.get(),
+            'ink_color': self.ink_color,
+            'paper_style': self.paper_style_var.get(),
+            'selected_font': font_path,
+            'font_lang': font_lang,
+            'paper_size': self.paper_size_var.get(),
+            'custom_width': self.custom_width_var.get(),
+            'custom_height': self.custom_height_var.get(),
+            'black_white': self.black_white_var.get(),
+            'created_date': str(datetime.datetime.now())
+        }
+        
+        try:
+            # Tải danh sách template hiện tại
+            templates = self.load_templates_list()
+            templates[template_name] = template_data
+            
+            # Lưu vào file
+            with open('templates.json', 'w', encoding='utf-8') as f:
+                json.dump(templates, f, indent=2, ensure_ascii=False)
+            
+            messagebox.showinfo("Thành công", f"Đã lưu template '{template_name}'!")
+            self.refresh_template_list()
+            self.template_name_var.set("")  # Xóa tên template
+            self.status_bar.config(text=f"Đã lưu template: {template_name}")
+        except Exception as e:
+            messagebox.showerror("Lỗi", f"Không thể lưu template: {e}")
+    
+    def load_template(self):
+        """Tải template từ file"""
+        file_path = filedialog.askopenfilename(
+            title="Chọn file template",
+            filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
+        )
+        if file_path:
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    template_data = json.load(f)
+                self.apply_template(template_data)
+                messagebox.showinfo("Thành công", "Đã tải template!")
+            except Exception as e:
+                messagebox.showerror("Lỗi", f"Không thể tải template: {e}")
+    
+    def load_template_from_list(self, event=None):
+        """Tải template từ danh sách"""
+        selection = self.template_listbox.curselection()
+        if not selection:
+            return
+        
+        template_name = self.template_listbox.get(selection[0])
+        templates = self.load_templates_list()
+        
+        if template_name in templates:
+            self.apply_template(templates[template_name])
+            messagebox.showinfo("Thành công", f"Đã tải template '{template_name}'!")
+        else:
+            messagebox.showerror("Lỗi", "Template không tồn tại!")
+    
+    def delete_template(self):
+        """Xóa template"""
+        selection = self.template_listbox.curselection()
+        if not selection:
+            messagebox.showwarning("Cảnh báo", "Vui lòng chọn template để xóa!")
+            return
+        
+        template_name = self.template_listbox.get(selection[0])
+        result = messagebox.askyesno("Xác nhận", f"Bạn có chắc muốn xóa template '{template_name}'?")
+        
+        if result:
+            try:
+                templates = self.load_templates_list()
+                if template_name in templates:
+                    del templates[template_name]
+                    
+                    with open('templates.json', 'w', encoding='utf-8') as f:
+                        json.dump(templates, f, indent=2, ensure_ascii=False)
+                    
+                    messagebox.showinfo("Thành công", f"Đã xóa template '{template_name}'!")
+                    self.refresh_template_list()
+                else:
+                    messagebox.showerror("Lỗi", "Template không tồn tại!")
+            except Exception as e:
+                messagebox.showerror("Lỗi", f"Không thể xóa template: {e}")
+    
+    def load_templates_list(self):
+        """Tải danh sách template từ file"""
+        try:
+            if os.path.exists('templates.json'):
+                with open('templates.json', 'r', encoding='utf-8') as f:
+                    return json.load(f)
+        except Exception as e:
+            print(f"Lỗi tải templates: {e}")
+        return {}
+    
+    def refresh_template_list(self):
+        """Làm mới danh sách template"""
+        self.template_listbox.delete(0, tk.END)
+        templates = self.load_templates_list()
+        
+        for template_name in sorted(templates.keys()):
+            template_data = templates[template_name]
+            created_date = template_data.get('created_date', 'Unknown')
+            display_text = f"{template_name} ({created_date[:10]})"
+            self.template_listbox.insert(tk.END, display_text)
+    
+    def apply_template(self, template_data):
+        """Áp dụng template lên UI"""
+        try:
+            self.font_size_var.set(template_data.get('font_size', 28))
+            self.line_spacing_var.set(template_data.get('line_spacing', 1.5))
+            self.margin_var.set(template_data.get('margin', 50))
+            self.ink_color = tuple(template_data.get('ink_color', (25, 25, 112)))
+            self.paper_style_var.set(template_data.get('paper_style', 'lined'))
+            self.paper_size_var.set(template_data.get('paper_size', 'A4'))
+            self.custom_width_var.set(template_data.get('custom_width', 800))
+            self.custom_height_var.set(template_data.get('custom_height', 600))
+            self.black_white_var.set(template_data.get('black_white', False))
+            
+            # Cập nhật màu button
+            self.color_button.config(bg=self.rgb_to_hex(self.ink_color))
+            
+            # Cập nhật labels
+            self.font_size_label.config(text=str(template_data.get('font_size', 28)))
+            self.line_spacing_label.config(text=f"{template_data.get('line_spacing', 1.5):.1f}")
+            self.margin_label.config(text=str(template_data.get('margin', 50)))
+            
+            # Cập nhật font được chọn
+            saved_font_path = template_data.get('selected_font')
+            if saved_font_path and hasattr(self, 'font_lang_map'):
+                # Tìm font trong danh sách
+                for display_name, (font_path, font_lang) in self.font_lang_map.items():
+                    if font_path == saved_font_path:
+                        self.font_combo.set(display_name)
+                        break
+                else:
+                    if self.font_combo['values']:
+                        self.font_combo.current(0)
+            
+            self.update_font_demo()
+            self.status_bar.config(text=f"Đã áp dụng template: {template_data.get('name', 'Unknown')}")
+            
+        except Exception as e:
+            messagebox.showerror("Lỗi", f"Không thể áp dụng template: {e}")
+
+    def toggle_dark_mode(self):
+        """Chuyển đổi giữa light mode và dark mode (cải tiến toàn diện)"""
+        import tkinter.ttk as ttk
+        style = ttk.Style()
+        if self.dark_mode_var.get():
+            # Định nghĩa style dark cho ttk
+            style.theme_use('clam')
+            style.configure('TFrame', background='#232629')
+            style.configure('TLabelframe', background='#232629', foreground='#fff')
+            style.configure('TLabel', background='#232629', foreground='#fff')
+            style.configure('TButton', background='#404040', foreground='#fff')
+            style.configure('TEntry', fieldbackground='#404040', foreground='#fff')
+            style.configure('TCombobox', fieldbackground='#404040', foreground='#fff', background='#404040')
+            style.configure('TCheckbutton', background='#232629', foreground='#fff')
+            style.configure('TProgressbar', background='#404040', troughcolor='#232629')
+            style.configure('TScale', background='#232629', troughcolor='#404040')
+            style.configure('Horizontal.TScrollbar', background='#404040', troughcolor='#232629')
+            style.configure('Vertical.TScrollbar', background='#404040', troughcolor='#232629')
+            bg_color = '#232629'
+            fg_color = '#ffffff'
+            entry_bg = '#404040'
+            entry_fg = '#ffffff'
+            canvas_bg = '#181a1b'
+        else:
+            style.theme_use('default')
+            style.configure('TFrame', background='#f0f0f0')
+            style.configure('TLabelframe', background='#f0f0f0', foreground='#000')
+            style.configure('TLabel', background='#f0f0f0', foreground='#000')
+            style.configure('TButton', background='#e0e0e0', foreground='#000')
+            style.configure('TEntry', fieldbackground='#ffffff', foreground='#000')
+            style.configure('TCombobox', fieldbackground='#ffffff', foreground='#000', background='#ffffff')
+            style.configure('TCheckbutton', background='#f0f0f0', foreground='#000')
+            style.configure('TProgressbar', background='#e0e0e0', troughcolor='#f0f0f0')
+            style.configure('TScale', background='#f0f0f0', troughcolor='#e0e0e0')
+            style.configure('Horizontal.TScrollbar', background='#e0e0e0', troughcolor='#f0f0f0')
+            style.configure('Vertical.TScrollbar', background='#e0e0e0', troughcolor='#f0f0f0')
+            bg_color = '#f0f0f0'
+            fg_color = '#000000'
+            entry_bg = '#ffffff'
+            entry_fg = '#000000'
+            canvas_bg = '#ffffff'
+        # Đệ quy set màu cho toàn bộ widget
+        self.apply_dark_mode_to_widget(self.root, bg_color, fg_color, entry_bg, entry_fg, canvas_bg)
+        # Status bar
+        self.status_bar.config(background=bg_color, foreground=fg_color)
+        mode_text = "Dark Mode" if self.dark_mode_var.get() else "Light Mode"
+        self.status_bar.config(text=f"Đã chuyển sang {mode_text}")
+
+    def apply_dark_mode_to_widget(self, widget, bg, fg, entry_bg, entry_fg, canvas_bg):
+        try:
+            widget_type = widget.winfo_class()
+            # Các widget thường
+            if widget_type in ['Frame', 'Labelframe']:
+                widget.configure(bg=bg)
+            elif widget_type in ['Label']:
+                widget.configure(bg=bg, fg=fg)
+            elif widget_type in ['Button']:
+                widget.configure(bg=bg, fg=fg, activebackground=entry_bg, activeforeground=fg)
+            elif widget_type in ['Entry']:
+                widget.configure(bg=entry_bg, fg=entry_fg, insertbackground=fg)
+            elif widget_type in ['Text']:
+                widget.configure(bg=entry_bg, fg=entry_fg, insertbackground=fg, selectbackground=bg, selectforeground=fg)
+            elif widget_type in ['Canvas']:
+                widget.configure(bg=canvas_bg)
+            elif widget_type in ['Listbox']:
+                widget.configure(bg=entry_bg, fg=entry_fg, selectbackground=bg, selectforeground=fg)
+            elif widget_type in ['Scrollbar']:
+                widget.configure(bg=bg, troughcolor=entry_bg)
+            # Đệ quy cho widget con
+            for child in widget.winfo_children():
+                self.apply_dark_mode_to_widget(child, bg, fg, entry_bg, entry_fg, canvas_bg)
+        except Exception:
+            pass
+
+    def get_canvas_size(self, paper_size, custom_width, custom_height, num_lines, line_height, margin):
+        """Tính toán kích thước canvas (copy từ HandwritingGenerator)"""
+        if paper_size == "A4":
+            # 794x1123 px ~ 210x297mm ở 96dpi
+            return 794, max(1123, num_lines * line_height + margin * 2)
+        elif paper_size == "A5":
+            # 559x794 px ~ 148x210mm ở 96dpi
+            return 559, max(794, num_lines * line_height + margin * 2)
+        elif paper_size == "Custom":
+            return custom_width, custom_height
+        else:
+            return 800, max(600, num_lines * line_height + margin * 2)
 
 def main():
     """Chạy ứng dụng"""
