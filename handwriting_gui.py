@@ -388,60 +388,60 @@ class HandwritingGenerator:
                            font_size=28, line_spacing=1.5, margin=50,
                            ink_color=(25, 25, 112), paper_style="lined", selected_font=None, progress_callback=None,
                            paper_size="A4", custom_width=800, custom_height=600, black_white=False):
-        """Tạo chữ viết tay từ text"""
-        import tkinter.messagebox as tkmsg
-        if not self.fonts:
-            raise Exception("Không có font nào khả dụng!")
-        
-        # Chọn font
-        fallback_used = False
+        """Tạo chữ viết tay từ văn bản"""
+        if not text.strip():
+            return None
+            
+        # Tải font
         if selected_font and selected_font in self.fonts:
-            font_path = selected_font
-        else:
-            font_path = random.choice(self.fonts)
-        
-        try:
-            if font_path:
-                font = ImageFont.truetype(font_path, font_size, encoding='unic')
-                # Kiểm tra font có vẽ được ký tự tiếng Việt không
-                test_text = "ăâđêôơưàáảãạĐ"
-                bbox = font.getbbox(test_text)
-                if bbox[2] <= 0 or bbox[3] <= 0:
-                    raise ValueError("Font không vẽ được bounding box cho ký tự TV.")
-            else:
-                font = ImageFont.load_default()
-                fallback_used = True
-        except Exception as e:
-            print(f"Lỗi load font {font_path}: {e}")
-            font = ImageFont.load_default()
-            fallback_used = True
-        
-        if fallback_used:
             try:
-                tkmsg.showwarning("Cảnh báo font", "Font bạn chọn bị lỗi hoặc không hỗ trợ tiếng Việt. Đã chuyển sang font mặc định.")
-            except Exception:
-                pass
+                font = ImageFont.truetype(selected_font, font_size, encoding='unic')
+            except:
+                font = ImageFont.load_default()
+        else:
+            font = ImageFont.load_default()
         
-        # Xử lý text với encoding UTF-8
-        if isinstance(text, bytes):
-            text = text.decode('utf-8')
-        
-        # Tính toán kích thước canvas trước
+        # Tính toán kích thước canvas ban đầu
         line_height = int(font_size * line_spacing)
         canvas_width, canvas_height = self.get_canvas_size(paper_size, custom_width, custom_height, 1, line_height, margin)
         
-        # Tính toán số ký tự tối đa trên mỗi dòng dựa trên kích thước giấy thực tế
+        # Cải thiện cách tính toán số ký tự tối đa trên mỗi dòng
         available_width = canvas_width - margin * 2 - 60  # Trừ lề và khoảng cách bắt đầu
-        # Ước tính số ký tự dựa trên font size (trung bình 1 ký tự = font_size * 0.6)
-        estimated_char_width = font_size * 0.6
-        max_chars_per_line = int(available_width / estimated_char_width)
         
-        # Sử dụng số ký tự đã tính toán thay vì cố định 70
-        wrapper = textwrap.TextWrapper(width=max_chars_per_line)
+        # Sử dụng font để đo chính xác chiều rộng thay vì ước tính
+        test_char = "a"  # Ký tự cơ bản để đo
+        try:
+            bbox = font.getbbox(test_char)
+            char_width = bbox[2] - bbox[0] if bbox[2] > bbox[0] else font_size * 0.6
+        except:
+            char_width = font_size * 0.6
+        
+        # Tính toán số ký tự tối đa dựa trên đo thực tế
+        max_chars_per_line = max(20, int(available_width / char_width))
+        
+        # Xử lý text với textwrap
+        wrapper = textwrap.TextWrapper(width=max_chars_per_line, break_long_words=False, break_on_hyphens=False)
         lines = []
         for paragraph in text.split('\n'):
             if paragraph.strip():
-                lines.extend(wrapper.wrap(paragraph))
+                wrapped_lines = wrapper.wrap(paragraph)
+                # Nếu text quá dài, chia nhỏ hơn nữa
+                for wrapped_line in wrapped_lines:
+                    if len(wrapped_line) > max_chars_per_line:
+                        # Chia từng từ một cách thủ công
+                        words = wrapped_line.split()
+                        current_line = ""
+                        for word in words:
+                            if len(current_line + " " + word) <= max_chars_per_line:
+                                current_line += (" " + word) if current_line else word
+                            else:
+                                if current_line:
+                                    lines.append(current_line)
+                                current_line = word
+                        if current_line:
+                            lines.append(current_line)
+                    else:
+                        lines.append(wrapped_line)
             else:
                 lines.append('')
         
@@ -505,6 +505,7 @@ class HandwritingGenerator:
                 line_wobble = random.randint(-2, 2)
                 y_with_slant += line_wobble
                 
+                # Xử lý từng từ trong dòng
                 words = line.split()
                 current_x = x_position
                 
@@ -514,8 +515,12 @@ class HandwritingGenerator:
                         current_x += random.randint(10, 20)
                     
                     # Kiểm tra xem từ có vượt quá biên phải không
-                    bbox = draw.textbbox((0, 0), word, font=font)
-                    word_width = bbox[2] - bbox[0]
+                    try:
+                        bbox = draw.textbbox((0, 0), word, font=font)
+                        word_width = bbox[2] - bbox[0]
+                    except:
+                        word_width = len(word) * char_width
+                    
                     if current_x + word_width > canvas_width - margin:
                         # Xuống dòng mới với vị trí ngẫu nhiên
                         y_position += line_height
@@ -990,18 +995,15 @@ Các ký tự đặc biệt: !@#$%^&*()_+-=[]{}|;':",./<>?`~"""
                 else:
                     font_path = None
                     font_lang = self.font_lang
-                wrapper = textwrap.TextWrapper(width=70)
-                lines = []
-                for paragraph in text.split('\n'):
-                    if paragraph.strip():
-                        lines.extend(wrapper.wrap(paragraph))
-                    else:
-                        lines.append('')
-                total_lines = len(lines)
-                self.root.after(0, lambda: self.show_progress(total_lines))
+                
+                # Tính toán số dòng để hiển thị progress (ước tính)
+                estimated_lines = len(text.split('\n')) + len(text) // 50  # Ước tính dựa trên độ dài text
+                self.root.after(0, lambda: self.show_progress(estimated_lines))
+                
                 paper_size = self.paper_size_var.get()
                 custom_width = self.custom_width_var.get()
                 custom_height = self.custom_height_var.get()
+                
                 # Tạo generator đúng ngôn ngữ font
                 temp_gen = HandwritingGenerator(font_lang=font_lang)
                 self.current_image = temp_gen.generate_handwriting(
@@ -1325,17 +1327,36 @@ Các ký tự đặc biệt: !@#$%^&*()_+-=[]{}|;':",./<>?`~"""
         line_height = int(font_size * line_spacing)
         canvas_width, canvas_height = self.get_canvas_size(paper_size, custom_width, custom_height, 1, line_height, margin)
         
-        # Tính toán số ký tự tối đa trên mỗi dòng
+        # Cải thiện cách tính toán số ký tự tối đa trên mỗi dòng
         available_width = canvas_width - margin * 2 - 60
-        estimated_char_width = font_size * 0.6
-        max_chars_per_line = int(available_width / estimated_char_width)
         
-        # Xử lý text
-        wrapper = textwrap.TextWrapper(width=max_chars_per_line)
+        # Ước tính chiều rộng ký tự (SVG không có font.getbbox)
+        char_width = font_size * 0.6
+        max_chars_per_line = max(20, int(available_width / char_width))
+        
+        # Xử lý text với textwrap
+        wrapper = textwrap.TextWrapper(width=max_chars_per_line, break_long_words=False, break_on_hyphens=False)
         lines = []
         for paragraph in text.split('\n'):
             if paragraph.strip():
-                lines.extend(wrapper.wrap(paragraph))
+                wrapped_lines = wrapper.wrap(paragraph)
+                # Nếu text quá dài, chia nhỏ hơn nữa
+                for wrapped_line in wrapped_lines:
+                    if len(wrapped_line) > max_chars_per_line:
+                        # Chia từng từ một cách thủ công
+                        words = wrapped_line.split()
+                        current_line = ""
+                        for word in words:
+                            if len(current_line + " " + word) <= max_chars_per_line:
+                                current_line += (" " + word) if current_line else word
+                            else:
+                                if current_line:
+                                    lines.append(current_line)
+                                current_line = word
+                        if current_line:
+                            lines.append(current_line)
+                    else:
+                        lines.append(wrapped_line)
             else:
                 lines.append('')
         
